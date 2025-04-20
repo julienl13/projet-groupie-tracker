@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Liste des Amiibo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f6f8fa;
+      padding: 20px;
+      color: #333;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .controls, .dark-mode-toggle {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    input, select {
+      padding: 10px;
+      margin: 0 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+    }
+
+    #darkModeToggle {
+      padding: 8px 16px;
+      border-radius: 5px;
+      background: #444;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    #loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 50vh;
+    }
+
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    ul {
+      display: flex;
+      flex-wrap: wrap;
+      list-style-type: none;
+      padding: 0;
+      justify-content: center;
+    }
+
+    .card {
+      perspective: 1000px;
+      margin: 15px;
+    }
+
+    .flip-card-inner {
+      width: 180px;
+      height: 250px;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      position: relative;
+    }
+
+    .flip-card-inner.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 15px;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flip-card-front img {
+      width: 100px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .flip-card-back {
+      transform: rotateY(180deg);
+      padding: 10px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #modal.active {
+      display: flex;
+    }
+
+    #modal .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 300px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    }
+
+    #modal button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      background: #e74c3c;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    body.dark {
+      background-color: #1e1e1e;
+      color: #eee;
+    }
+
+    body.dark .flip-card-front,
+    body.dark .flip-card-back {
+      background-color: #2a2a2a;
+      color: #fff;
+    }
+
+    body.dark #modal .modal-content {
+      background-color: #2a2a2a;
+      color: white;
+    }
+
+    body.dark select,
+    body.dark input {
+      background-color: #333;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    body.dark button {
+      background-color: #555;
+    }
+
+    body.dark #darkModeToggle {
+      background-color: #eee;
+      color: #111;
+    }
+  </style>
+</head>
+<body>
+  <h1>Liste des Amiibo</h1>
+
+  <div class="dark-mode-toggle">
+    <button id="darkModeToggle">🌙 Activer le mode sombre</button>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Rechercher un nom...">
+    <select id="seriesFilter">
+      <option value="all">Toutes les séries</option>
+      <option value="Animal Crossing">Animal Crossing</option>
+      <option value="The Legend of Zelda">The Legend of Zelda</option>
+      <option value="Super Mario">Super Mario</option>
+      <option value="Splatoon">Splatoon</option>
+      <option value="Metroid">Metroid</option>
+      <option value="Kirby">Kirby</option>
+    </select>
+    <select id="sortSelect">
+      <option value="default">Trier par défaut</option>
+      <option value="asc">A → Z</option>
+      <option value="desc">Z → A</option>
+    </select>
+  </div>
+
+  <div id="loader"><div class="spinner"></div></div>
+
+  <ul id="amiiboList" class="hidden">
+    {{range .Items}}
+    <li class="card" data-name="{{.Name}}">
+      <div class="flip-card-inner">
+        <div class="flip-card-front">
+          <img src="{{.Image}}" alt="{{.Name}}">
+          <h3>{{.Name}}</h3>
+        </div>
+        <div class="flip-card-back">
+          <p>{{.Series}}</p>
+          <button onclick="openModal('{{.Name}}', '{{.Series}}', '{{.Image}}')">Détails</button>
+        </div>
+      </div>
+    </li>
+    {{end}}
+  </ul>
+
+  <p id="noResults" class="hidden" style="text-align:center;">Aucun amiibo trouvé.</p>
+
+  <div id="modal">
+    <div class="modal-content">
+      <h2 id="modalName"></h2>
+      <p id="modalSeries"></p>
+      <img id="modalImage" src="" alt="">
+      <br>
+      <button onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const seriesFilter = document.getElementById('seriesFilter');
+    const list = document.getElementById('amiiboList');
+    const loader = document.getElementById('loader');
+    const noResults = document.getElementById('noResults');
+    const cards = Array.from(document.querySelectorAll('.card'));
+    const modal = document.getElementById('modal');
+    const darkToggle = document.getElementById('darkModeToggle');
+
+    window.onload = () => {
+      loader.classList.add('hidden');
+      list.classList.remove('hidden');
+    };
+
+    function filterAndSort() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const sortValue = sortSelect.value;
+      const selectedSeries = seriesFilter.value.toLowerCase();
+
+      let visibleCards = cards.filter(card => {
+        const name = card.dataset.name.toLowerCase();
+        const series = card.querySelector('p').textContent.toLowerCase();
+        const matchName = name.includes(searchTerm);
+        const matchSeries = selectedSeries === "all" || series.includes(selectedSeries);
+        const match = matchName && matchSeries;
+        card.style.display = match ? 'block' : 'none';
+        return match;
+      });
+
+      noResults.classList.toggle('hidden', visibleCards.length > 0);
+
+      if (sortValue !== 'default') {
+        visibleCards.sort((a, b) => {
+          const nameA = a.dataset.name.toLowerCase();
+          const nameB = b.dataset.name.toLowerCase();
+          return sortValue === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+        });
+
+        visibleCards.forEach(card => list.appendChild(card));
+      }
+    }
+
+    searchInput.addEventListener('input', filterAndSort);
+    sortSelect.addEventListener('change', filterAndSort);
+    seriesFilter.addEventListener('change', filterAndSort);
+
+    document.querySelectorAll('.flip-card-inner').forEach(card => {
+      card.addEventListener('click', () => {
+        card.classList.toggle('flipped');
+      });
+    });
+
+    function openModal(name, series, image) {
+      document.getElementById('modalName').textContent = name;
+      document.getElementById('modalSeries').textContent = series;
+      document.getElementById('modalImage').src = image;
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      modal.classList.remove('active');
+    }
+
+    darkToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      darkToggle.textContent = document.body.classList.contains('dark') ? '☀️ Mode clair' : '🌙 Activer le mode sombre';
+    });
+  </script>
+</body>
+</html>
